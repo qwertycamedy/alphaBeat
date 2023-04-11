@@ -1,67 +1,186 @@
 import React, { useEffect, useState } from "react";
 import Game from "./Components/Game";
 import GameOver from "./Components/GameOver";
-
-let alphabet = "АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ";
-alphabet = alphabet.split('');
+import MyBtn from "./UI/MyBtn";
+import axios from "axios";
+import SubmitResultModal from "./Components/SubmitResultModal";
+import AllResultsModal from "./Components/AllResultsModal";
 
 function App() {
-  const [currentLetter, setCurrentLetter] = useState("A"); // текущая буква
-  const [randomLetters, setRandomLetters] = useState([]); // массив рандомных букв
-  const [timer, setTimer] = useState(0); // таймер
+  const [alphabet, setAlphabet] = useState([
+    "А",
+    "Б",
+    "В",
+    "Г",
+    "Д",
+    "Е",
+    "Ё",
+    "Ж",
+    "З",
+    "И",
+    "Й",
+    "К",
+    "Л",
+    "М",
+    "Н",
+    "О",
+    "П",
+    "Р",
+    "С",
+    "Т",
+    "У",
+    "Ф",
+    "Х",
+    "Ц",
+    "Ч",
+    "Ш",
+    "Щ",
+    "Ъ",
+    "Ы",
+    "Ь",
+    "Э",
+    "Ю",
+    "Я",
+  ]);
+  const updatedAlphabet = [...alphabet];
+  const [currentLetter, setCurrentLetter] = useState("А");
+  const [randomLetters, setRandomLetters] = useState([]);
+  const [startTime, setStartTime] = useState(0);
+  const [timer, setTimer] = useState(0);
   const [allTime, setAllTime] = useState(0);
-  const [startTime, setStartTime] = useState(0); // время начала игры
+  const [gameStarted, setGameStarted] = useState(false);
   const [gameOver, setGameOver] = useState(false);
 
-  // Запуск таймера при начале игры
+  const [resultModal, setResultModal] = useState(false);
+  const [allResultsModal, setAllResultsModal] = useState(false);
+
+  const [resultsData, setResultsData] = useState([]);
+  const [newResultName, setNewResultName] = useState([]);
+  
+  useEffect(() => {
+    axios
+      .get("https://64355b0983a30bc9ad5e75ef.mockapi.io/results")
+      .then(response => {
+        setResultsData(response.data.reverse());
+      })
+      .catch(error => {
+        console.error(error);
+      });
+  }, []);
 
   useEffect(() => {
     if (!gameOver) {
-      getRandomLetters()
+      getRandomLetters();
       setStartTime(Date.now());
-      const interval = setInterval(() => {
-        setTimer(Math.floor((Date.now() - startTime) / 1000));
-      }, 1000);
-      return () => clearInterval(interval);
+      if (gameStarted) {
+        const interval = setInterval(() => {
+          setTimer(Math.floor((Date.now() - startTime) / 1000));
+        }, 1000);
+        return () => clearInterval(interval);
+      }
     }
-  }, [gameOver, startTime]);
+  }, [gameStarted, gameOver, startTime]);
 
   const getRandomLetters = () => {
-    const count = 15; // количество случайных элементов
-    const shuffledArray = alphabet.sort(() => 0.5 - Math.random());
-    const selectedElements = [currentLetter, shuffledArray.slice(0, count)];
-    setRandomLetters(selectedElements);
+    const count = 16;
+    const randomWithCurrent = [
+      updatedAlphabet[0],
+      ...updatedAlphabet.slice(1).sort(() => 0.5 - Math.random()),
+    ];
+    const selectedElements = randomWithCurrent.slice(0, count);
+    const shuffledArray = selectedElements.sort(() => 0.5 - Math.random());
+    setRandomLetters(shuffledArray);
   };
 
-  // Обработчик нажатия на букву
   const handleLetterClick = letter => {
-    if (letter === alphabet[0]) {
-      if (letter === "Я") {
-        // Если нажата последняя буква, завершаем игру
-        setGameOver(true);
-        setAllTime(timer);
-      } else {
-        getRandomLetters();
-        setCurrentLetter(alphabet[0]);
+    if (letter === currentLetter) {
+      switch (letter) {
+        case "А": {
+          setGameStarted(true);
+          updatedAlphabet.shift();
+          setAlphabet(updatedAlphabet);
+          setCurrentLetter(updatedAlphabet[0]);
+          getRandomLetters();
+          break;
+        }
+        case "Я": {
+          setAllTime(timer);
+          setGameOver(true);
+          break;
+        }
+        case currentLetter: {
+          updatedAlphabet.shift();
+          setAlphabet(updatedAlphabet);
+          setCurrentLetter(updatedAlphabet[0]);
+          getRandomLetters();
+          break;
+        }
+        default: {
+          console.log("Error");
+        }
       }
     }
   };
 
-  // Обработчик окончания игры
-  const handleGameOver = () => {
-    // Записываем результат в БД (localStorage в данном случае)
-    const endTime = Date.now();
-    const elapsedTime = Math.floor((endTime - startTime) / 1000);
-    localStorage.setItem("gameResult", elapsedTime);
+  const onResultModal = () => {
+    setResultModal(!resultModal);
+  };
+
+  const onAllResultsModal = () => {
+    setAllResultsModal(!allResultsModal);
+  };
+
+  const onSubmitResult = e => {
+    e.preventDefault();
+    const newResult = {
+      id: Date.now(),
+      name: newResultName,
+      result: `${allTime}c.`,
+    };
+    axios
+      .post("https://64355b0983a30bc9ad5e75ef.mockapi.io/results", newResult)
+      .then(response => {
+        setResultsData([newResult, response.data]);
+        setNewResultName("");
+        setResultModal(false);
+        window.location.reload();
+      })
+      .catch(error => {
+        console.error(error);
+      });
+  };
+
+  const onInputChange = event => {
+    setNewResultName(event.target.value);
   };
 
   return (
     <div className="App flex flex-col gap-4 items-center justify-center min-h-screen text-center text-[14px] font-mono max-w-3xl mx-auto p-4">
       {!gameOver ? (
-        <Game handleLetterClick={handleLetterClick} randomLetters={randomLetters} currentLetter={currentLetter} timer={timer}  />
+        <Game
+          handleLetterClick={handleLetterClick}
+          randomLetters={randomLetters}
+          currentLetter={currentLetter}
+          timer={timer}
+          gameStarted={gameStarted}
+        />
       ) : (
-        <GameOver handleGameOver={handleGameOver} allTime={allTime} />
+        <GameOver
+          allTime={allTime}
+          modal={resultModal}
+          setModal={setResultModal}
+          onResultModal={onResultModal}
+        />
       )}
+      <MyBtn onClick={onAllResultsModal}>Все результаты</MyBtn>
+      <SubmitResultModal
+        modal={resultModal}
+        setModal={setResultModal}
+        onSubmit={onSubmitResult}
+        allTime={allTime}
+        onInputChange={onInputChange}
+      />
+      <AllResultsModal modal={allResultsModal} setModal={setAllResultsModal} resultsData={resultsData} />
     </div>
   );
 }
