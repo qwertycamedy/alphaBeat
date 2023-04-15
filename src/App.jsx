@@ -56,7 +56,7 @@ function App() {
 
   const [resultsData, setResultsData] = useState([]);
   const [newResultName, setNewResultName] = useState([]);
-  
+
   useEffect(() => {
     axios
       .get("https://64355b0983a30bc9ad5e75ef.mockapi.io/results")
@@ -137,17 +137,19 @@ function App() {
       name: newResultName,
       result: `${allTime}c.`,
     };
-    axios
-      .post("https://64355b0983a30bc9ad5e75ef.mockapi.io/results", newResult)
-      .then(response => {
-        setResultsData([newResult, response.data]);
-        setNewResultName("");
-        setResultModal(false);
-        window.location.reload();
-      })
-      .catch(error => {
-        console.error(error);
-      });
+    if (newResultName.length) {
+      axios
+        .post("https://64355b0983a30bc9ad5e75ef.mockapi.io/results", newResult)
+        .then(response => {
+          setResultsData([newResult, response.data]);
+          setNewResultName("");
+          setResultModal(false);
+          window.location.reload();
+        })
+        .catch(error => {
+          console.error(error);
+        });
+    }
   };
 
   const onInputChange = event => {
@@ -180,7 +182,11 @@ function App() {
         allTime={allTime}
         onInputChange={onInputChange}
       />
-      <AllResultsModal modal={allResultsModal} setModal={setAllResultsModal} resultsData={resultsData} />
+      <AllResultsModal
+        modal={allResultsModal}
+        setModal={setAllResultsModal}
+        resultsData={resultsData}
+      />
     </div>
   );
 }
